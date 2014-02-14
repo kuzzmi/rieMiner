@@ -59,6 +59,7 @@ private:
                     primeTable.push_back(i);
             }
         }
+		LeaveCriticalSection(&block->cs_work);
     }
     static bool isPrime( int candidate )
     {
@@ -198,21 +199,18 @@ void riecoin_process(minerRiecoinBlock_t* block)
 				const int TRIES = 65536;
 
 				for ( i = 0; i < TRIES; i++ )
-				{
-					totalCollisionCount++;
+				{					
 					candidateDelta = mySieve.getNext();
 					if( candidateDelta < 0 )
 						break;
 					bnTarget = bnBase + candidateDelta;
 					isPrimeResult = BN_is_prime_fasttest( &bnTarget, 4, NULL, NULL, NULL, 1);
+					totalCollisionCount++;
 					if ( isPrimeResult == 1 )
 					{
 						break;
 					}
-				}
-
-				uint256 delta = candidateDelta + accumulatedDelta;
-				memcpy(block->nOffset, &delta, sizeof(delta));
+				}				
 
 				// Check if something found
 				if ( candidateDelta >= 0 && i != TRIES)
@@ -220,14 +218,19 @@ void riecoin_process(minerRiecoinBlock_t* block)
 					bnTarget += 4;
 					if( BN_is_prime_fasttest( &bnTarget, 4, NULL, NULL, NULL, 1) == 1 ) {
 						// we accept quintuplets
+						totalCollisionCount++;
 						bnTarget += 2;
 					if( BN_is_prime_fasttest( &bnTarget, 4, NULL, NULL, NULL, 1) == 1 ) {
+						totalCollisionCount++;
 						// we send 3 tuples because the server accepts it
 						// if this thing is bigger than the server will reward it as the bigger prime
+						EnterCriticalSection(&block->cs_work);
+						uint256 delta = candidateDelta + accumulatedDelta;
+						memcpy(block->nOffset, &delta, sizeof(delta));
 						xptMiner_submitShare(block);
 						totalShareCount++;
-						break;
-					 } }
+						LeaveCriticalSection(&block->cs_work);
+					} }
 				}
 
 				// Meter range/sec

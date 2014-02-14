@@ -3,7 +3,7 @@
 #define MAX_TRANSACTIONS	(4096)
 
 // miner version string (for pool statistic)
-char* minerVersionString = "xptMiner 1.5";
+char* minerVersionString = "xptMiner 1.2";
 
 minerSettings_t minerSettings = {0};
 
@@ -255,16 +255,6 @@ void xptMiner_submitShare(minerRiecoinBlock_t* block)
 
 int xptMiner_minerThread(int threadIndex)
 {
-	// local work data
-	union
-	{
-		minerProtosharesBlock_t minerProtosharesBlock;
-		minerScryptBlock_t minerScryptBlock;
-		minerMetiscoinBlock_t minerMetiscoinBlock;
-		minerPrimecoinBlock_t minerPrimecoinBlock; 
-		minerMaxcoinBlock_t minerMaxcoinBlock; 
-		
-	};
 	minerRiecoinBlock_t minerRiecoinBlock; 
 	
 	while( true )
@@ -272,115 +262,23 @@ int xptMiner_minerThread(int threadIndex)
 		// has work?
 		bool hasValidWork = false;
 		EnterCriticalSection(&workDataSource.cs_work);
+		memset(&minerRiecoinBlock, 0x00, sizeof(minerRiecoinBlock));
+		InitializeCriticalSection(&minerRiecoinBlock.cs_work);
+
 		if( workDataSource.height > 0 )
 		{
-			switch( workDataSource.algorithm )
-			{
-			case ALGORITHM_PROTOSHARES:
-				// get protoshares work data
-				memset(&minerProtosharesBlock, 0x00, sizeof(minerProtosharesBlock));
-				minerProtosharesBlock.version = workDataSource.version;
-				minerProtosharesBlock.nTime = (uint32)time(NULL) + workDataSource.timeBias;
-				minerProtosharesBlock.nBits = workDataSource.nBits;
-				minerProtosharesBlock.nonce = 0;
-				minerProtosharesBlock.height = workDataSource.height;
-				memcpy(minerProtosharesBlock.merkleRootOriginal, workDataSource.merkleRootOriginal, 32);
-				memcpy(minerProtosharesBlock.prevBlockHash, workDataSource.prevBlockHash, 32);
-				memcpy(minerProtosharesBlock.targetShare, workDataSource.targetShare, 32);
-				minerProtosharesBlock.uniqueMerkleSeed = uniqueMerkleSeedGenerator;
-				uniqueMerkleSeedGenerator++;
-				// generate merkle root transaction
-				bitclient_generateTxHash(sizeof(uint32), (uint8*)&minerProtosharesBlock.uniqueMerkleSeed, workDataSource.coinBase1Size, workDataSource.coinBase1, workDataSource.coinBase2Size, workDataSource.coinBase2, workDataSource.txHash, TX_MODE_DOUBLE_SHA256);
-				bitclient_calculateMerkleRoot(workDataSource.txHash, workDataSource.txHashCount+1, minerProtosharesBlock.merkleRoot, TX_MODE_DOUBLE_SHA256);
-				hasValidWork = true;
-				break;
-			case ALGORITHM_SCRYPT:
-				// get scrypt work data
-				memset(&minerScryptBlock, 0x00, sizeof(minerScryptBlock));
-				minerScryptBlock.version = workDataSource.version;
-				minerScryptBlock.nTime = (uint32)time(NULL) + workDataSource.timeBias;
-				minerScryptBlock.nBits = workDataSource.nBits;
-				minerScryptBlock.nonce = 0;
-				minerScryptBlock.height = workDataSource.height;
-				memcpy(minerScryptBlock.merkleRootOriginal, workDataSource.merkleRootOriginal, 32);
-				memcpy(minerScryptBlock.prevBlockHash, workDataSource.prevBlockHash, 32);
-				memcpy(minerScryptBlock.targetShare, workDataSource.targetShare, 32);
-				minerScryptBlock.uniqueMerkleSeed = uniqueMerkleSeedGenerator;
-				uniqueMerkleSeedGenerator++;
-				// generate merkle root transaction
-				bitclient_generateTxHash(sizeof(uint32), (uint8*)&minerScryptBlock.uniqueMerkleSeed, workDataSource.coinBase1Size, workDataSource.coinBase1, workDataSource.coinBase2Size, workDataSource.coinBase2, workDataSource.txHash, TX_MODE_DOUBLE_SHA256);
-				bitclient_calculateMerkleRoot(workDataSource.txHash, workDataSource.txHashCount+1, minerScryptBlock.merkleRoot, TX_MODE_DOUBLE_SHA256);
-				hasValidWork = true;
-				break;
-			case ALGORITHM_METISCOIN:
-				// get metiscoin work data
-				memset(&minerMetiscoinBlock, 0x00, sizeof(minerMetiscoinBlock));
-				minerMetiscoinBlock.version = workDataSource.version;
-				minerMetiscoinBlock.nTime = (uint32)time(NULL) + workDataSource.timeBias;
-				minerMetiscoinBlock.nBits = workDataSource.nBits;
-				minerMetiscoinBlock.nonce = 0;
-				minerMetiscoinBlock.height = workDataSource.height;
-				memcpy(minerMetiscoinBlock.merkleRootOriginal, workDataSource.merkleRootOriginal, 32);
-				memcpy(minerMetiscoinBlock.prevBlockHash, workDataSource.prevBlockHash, 32);
-				memcpy(minerMetiscoinBlock.targetShare, workDataSource.targetShare, 32);
-				minerMetiscoinBlock.uniqueMerkleSeed = uniqueMerkleSeedGenerator;
-				uniqueMerkleSeedGenerator++;
-				// generate merkle root transaction
-				bitclient_generateTxHash(sizeof(uint32), (uint8*)&minerMetiscoinBlock.uniqueMerkleSeed, workDataSource.coinBase1Size, workDataSource.coinBase1, workDataSource.coinBase2Size, workDataSource.coinBase2, workDataSource.txHash, TX_MODE_DOUBLE_SHA256);
-				bitclient_calculateMerkleRoot(workDataSource.txHash, workDataSource.txHashCount+1, minerMetiscoinBlock.merkleRoot, TX_MODE_DOUBLE_SHA256);
-				hasValidWork = true;
-				break;
-			case ALGORITHM_MAXCOIN:
-				// get maxcoin work data
-				memset(&minerMaxcoinBlock, 0x00, sizeof(minerMaxcoinBlock));
-				minerMaxcoinBlock.version = workDataSource.version;
-				minerMaxcoinBlock.nTime = (uint32)time(NULL) + workDataSource.timeBias;
-				minerMaxcoinBlock.nBits = workDataSource.nBits;
-				minerMaxcoinBlock.nonce = 0;
-				minerMaxcoinBlock.height = workDataSource.height;
-				memcpy(minerMaxcoinBlock.merkleRootOriginal, workDataSource.merkleRootOriginal, 32);
-				memcpy(minerMaxcoinBlock.prevBlockHash, workDataSource.prevBlockHash, 32);
-				memcpy(minerMaxcoinBlock.targetShare, workDataSource.targetShare, 32);
-				minerMaxcoinBlock.uniqueMerkleSeed = uniqueMerkleSeedGenerator;
-				uniqueMerkleSeedGenerator++;
-				// generate merkle root transaction
-				bitclient_generateTxHash(sizeof(uint32), (uint8*)&minerMaxcoinBlock.uniqueMerkleSeed, workDataSource.coinBase1Size, workDataSource.coinBase1, workDataSource.coinBase2Size, workDataSource.coinBase2, workDataSource.txHash, TX_MODE_SINGLE_SHA256);
-				bitclient_calculateMerkleRoot(workDataSource.txHash, workDataSource.txHashCount+1, minerMaxcoinBlock.merkleRoot, TX_MODE_DOUBLE_SHA256);
-				hasValidWork = true;
-				break;
-			case ALGORITHM_RIECOIN:
-				// get maxcoin work data
-				memset(&minerRiecoinBlock, 0x00, sizeof(minerRiecoinBlock));
-				minerRiecoinBlock.version = workDataSource.version;
-				minerRiecoinBlock.timestamp = workDataSource.timeBias;
-				minerRiecoinBlock.nBits = workDataSource.nBits;
-				minerRiecoinBlock.height = workDataSource.height;
-				memcpy(minerRiecoinBlock.merkleRoot, workDataSource.rieMerkle[threadIndex].merkleRoot, 32);
-				memcpy(minerRiecoinBlock.blockHash, workDataSource.rieMerkle[threadIndex].blockHash, 32);
-				memcpy(minerRiecoinBlock.prevBlockHash, workDataSource.prevBlockHash, 32);	
-				InitializeCriticalSection(&minerRiecoinBlock.cs_work);
-				// generate merkle root transaction
-				hasValidWork = true;
-				break;
-			case ALGORITHM_PRIME:
-				// get primecoin work data
-				memset(&minerPrimecoinBlock, 0x00, sizeof(minerPrimecoinBlock));
-				minerPrimecoinBlock.version = workDataSource.version;
-				minerPrimecoinBlock.nTime = (uint32)time(NULL) + workDataSource.timeBias;
-				minerPrimecoinBlock.nBits = workDataSource.nBits;
-				minerPrimecoinBlock.nonce = 0;
-				minerPrimecoinBlock.height = workDataSource.height;
-				memcpy(minerPrimecoinBlock.merkleRootOriginal, workDataSource.merkleRootOriginal, 32);
-				memcpy(minerPrimecoinBlock.prevBlockHash, workDataSource.prevBlockHash, 32);
-				memcpy(minerPrimecoinBlock.targetShare, workDataSource.targetShare, 32);
-				minerPrimecoinBlock.uniqueMerkleSeed = uniqueMerkleSeedGenerator;
-				uniqueMerkleSeedGenerator++;
-				// generate merkle root transaction
-				bitclient_generateTxHash(sizeof(uint32), (uint8*)&minerPrimecoinBlock.uniqueMerkleSeed, workDataSource.coinBase1Size, workDataSource.coinBase1, workDataSource.coinBase2Size, workDataSource.coinBase2, workDataSource.txHash, TX_MODE_DOUBLE_SHA256);
-				bitclient_calculateMerkleRoot(workDataSource.txHash, workDataSource.txHashCount+1, minerPrimecoinBlock.merkleRoot, TX_MODE_DOUBLE_SHA256);
-				hasValidWork = true;
-				break;
-			}
+			// get rie work data
+			EnterCriticalSection(&minerRiecoinBlock.cs_work);
+			minerRiecoinBlock.version = workDataSource.version;
+			minerRiecoinBlock.timestamp = workDataSource.timeBias;
+			minerRiecoinBlock.nBits = workDataSource.nBits;
+			minerRiecoinBlock.height = workDataSource.height;
+			memcpy(minerRiecoinBlock.merkleRoot, workDataSource.rieMerkle[threadIndex].merkleRoot, 32);
+			memcpy(minerRiecoinBlock.blockHash, workDataSource.rieMerkle[threadIndex].blockHash, 32);
+			memcpy(minerRiecoinBlock.prevBlockHash, workDataSource.prevBlockHash, 32);	
+			LeaveCriticalSection(&minerRiecoinBlock.cs_work);
+			// generate merkle root transaction
+			hasValidWork = true;
 		}
 		LeaveCriticalSection(&workDataSource.cs_work);
 		if( hasValidWork == false )
@@ -388,60 +286,8 @@ int xptMiner_minerThread(int threadIndex)
 			Sleep(1);
 			continue;
 		}
-		// valid work data present, start processing workload
-		if(	workDataSource.algorithm == ALGORITHM_PROTOSHARES )
-		{
-			switch( minerSettings.protoshareMemoryMode )
-			{
-			case PROTOSHARE_MEM_512:
-				protoshares_process_512(&minerProtosharesBlock);
-				break;
-			case PROTOSHARE_MEM_256:
-				protoshares_process_256(&minerProtosharesBlock);
-				break;
-			case PROTOSHARE_MEM_128:
-				protoshares_process_128(&minerProtosharesBlock);
-				break;
-			case PROTOSHARE_MEM_32:
-				protoshares_process_32(&minerProtosharesBlock);
-				break;
-			case PROTOSHARE_MEM_8:
-				protoshares_process_8(&minerProtosharesBlock);
-				break;
-			default:
-				printf("Unknown memory mode\n");
-				Sleep(5000);
-				break;
-			}
-		}
-		else if( workDataSource.algorithm == ALGORITHM_SCRYPT )
-		{
-			scrypt_process_cpu(&minerScryptBlock);
-		}
-		else if( workDataSource.algorithm == ALGORITHM_PRIME )
-		{
-			primecoin_process(&minerPrimecoinBlock);
-		}
-		else if( workDataSource.algorithm == ALGORITHM_RIECOIN )
-		{
-			riecoin_process(&minerRiecoinBlock);
-		}
-		else if( workDataSource.algorithm == ALGORITHM_METISCOIN )
-		{
-			metiscoin_process(&minerMetiscoinBlock);
-		}
-		else if( workDataSource.algorithm == ALGORITHM_MAXCOIN )
-		{
-			if( minerSettings.useGPU && threadIndex == 0 )
-				maxcoin_processGPU(&minerMaxcoinBlock);
-			else
-				maxcoin_process(&minerMaxcoinBlock);
-		}
-		else
-		{
-			printf("xptMiner_minerThread(): Unknown algorithm\n");
-			Sleep(5000); // dont spam the console
-		}
+		
+		riecoin_process(&minerRiecoinBlock);		
 	}
 	return 0;
 }
@@ -472,9 +318,7 @@ void xptMiner_getWorkFromXPTConnection(xptClient_t* xptClient)
 	workDataSource.timeBias = xptClient->blockWorkInfo.timeBias;
 	workDataSource.nBits = xptClient->blockWorkInfo.nBits;
 	memcpy(workDataSource.merkleRootOriginal, xptClient->blockWorkInfo.merkleRoot, 32);
-
-	memcpy(workDataSource.merkleRootOriginal, xptClient->blockWorkInfo.merkleRoot, 32);
-
+		
 	// set payloads
 	 if( xptClient->algorithm == ALGORITHM_RIECOIN )
 	 {		 
@@ -575,7 +419,7 @@ void xptMiner_xptQueryWorkLoop()
 					{
 						speedRate = (double)totalCollisionCount * 32768.0 / (double)passedSeconds / 1000.0;
 					}
-					printf("[%02d:%02d:%02d] primes/s: %.2lf Shares total: %d / %d\n", (passedSeconds/3600)%60, (passedSeconds/60)%60, (passedSeconds)%60, speedRate, totalShareCount, totalShareCount-totalRejectedShareCount);
+					printf("[%02d:%02d:%02d] primetests/s: %.2lf Shares total: %d / %d\n", (passedSeconds/3600)%60, (passedSeconds/60)%60, (passedSeconds)%60, speedRate, totalShareCount, totalShareCount-totalRejectedShareCount);
 				}
 
 			}
@@ -810,7 +654,7 @@ int main(int argc, char** argv)
 	minerSettings.protoshareMemoryMode = commandlineInput.ptsMemoryMode;
 	minerSettings.useGPU = commandlineInput.useGPU;
 	printf("\xC9\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xBB\n");
-	printf("\xBA  rieMiner (v1.0) (based on jh00 xptMiner)		\xBA\n");
+	printf("\xBA  rieMiner (v1.2) (based on jh00 xptMiner)		\xBA\n");
 	printf("\xBA  author: traffiq                               \xBA\n");
 	printf("\xBA  http://candypool.net                          \xBA\n");
 	printf("\xC8\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xBC\n");
